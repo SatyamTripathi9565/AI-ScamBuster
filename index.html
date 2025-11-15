@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fake URL Detector</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            background-color: #f0f2f5;
+            color: #333;
+        }
+
+        .container {
+            background: #fff;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            text-align: center;
+            width: 90%;
+            max-width: 700px;
+        }
+
+        h1 {
+            color: #1a73e8;
+            margin-bottom: 15px;
+        }
+
+        p {
+            color: #666;
+            margin-bottom: 25px;
+        }
+
+        .input-group {
+            display: flex;
+            margin-bottom: 20px;
+            justify-content: center;
+        }
+
+        #url-input {
+            flex-grow: 1;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px 0 0 8px;
+            font-size: 16px;
+            width: 70%;
+        }
+
+        #url-input:focus {
+            outline: none;
+            border-color: #1a73e8;
+        }
+
+        #check-btn {
+            padding: 12px 20px;
+            border: none;
+            background-color: #1a73e8;
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+            border-radius: 0 8px 8px 0;
+        }
+
+        #check-btn:hover {
+            background-color: #155ab6;
+        }
+
+        .result-box {
+            margin-top: 25px;
+            padding: 20px;
+            border-radius: 10px;
+            font-size: 16px;
+            display: none;
+            max-height: 400px; /* ✅ Output ke liye fixed height */
+            overflow-y: auto;  /* ✅ Scroll enable */
+            text-align: left;  /* ✅ Explanation readable */
+            line-height: 1.6;
+            word-wrap: break-word;
+            white-space: pre-wrap;
+        }
+
+        .result-box.benign {
+            background-color: #e6f4ea;
+            color: #0b8043;
+            border: 1px solid #34a853;
+        }
+
+        .result-box.malicious {
+            background-color: #fce8e6;
+            color: #b31412;
+            border: 1px solid #ea4335;
+        }
+
+        .result-box strong {
+            color: #000;
+        }
+
+        /* Scrollbar style */
+        .result-box::-webkit-scrollbar {
+            width: 8px;
+        }
+        .result-box::-webkit-scrollbar-thumb {
+            background: #ccc;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🤖 Fake URL Detector</h1>
+        <p>Enter a URL to check if it is safe or malicious.</p>
+        <div class="input-group">
+            <input type="text" id="url-input" placeholder="e.g., https://www.google.com">
+            <button id="check-btn">Check URL</button>
+        </div>
+        <div id="result" class="result-box"></div>
+    </div>
+
+    <script>
+        const urlInput = document.getElementById('url-input');
+        const checkBtn = document.getElementById('check-btn');
+        const resultDiv = document.getElementById('result');
+
+        checkBtn.addEventListener('click', async () => {
+            const url = urlInput.value.trim();
+            if (url === '') {
+                alert('Please enter a URL.');
+                return;
+            }
+
+            resultDiv.style.display = 'none';
+            resultDiv.innerHTML = '🔎 Checking...';
+            resultDiv.className = 'result-box';
+
+            try {
+                const response = await fetch('/predict', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ url: url })
+                });
+
+                if (!response.ok) {
+                    throw new Error('Network response was not ok.');
+                }
+
+                const data = await response.json();
+
+                let htmlContent = `
+                    <strong>🔍 Result:</strong> <span style="text-transform: uppercase;">${data.prediction}</span><br>
+                    <strong>📊 Confidence:</strong> ${(data.confidence * 100).toFixed(2)}%<br><br>
+                    <strong>💡 Explanation:</strong><br><br>
+                    ${data.explanation}
+                `;
+
+                resultDiv.innerHTML = htmlContent;
+
+                if (data.prediction === 'Benign') {
+                    resultDiv.classList.add('benign');
+                } else {
+                    resultDiv.classList.add('malicious');
+                }
+
+                resultDiv.style.display = 'block';
+
+            } catch (error) {
+                console.error('Error:', error);
+                resultDiv.textContent = '⚠️ An error occurred. Please try again.';
+                resultDiv.classList.add('malicious');
+                resultDiv.style.display = 'block';
+            }
+        });
+    </script>
+</body>
+</html>
